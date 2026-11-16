@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#16221d">
+<script>
+/* Hub convention: shared theme key, dark by default, applied before first paint */
+(function(){var t="dark";try{t=localStorage.getItem("hub:theme")||"dark";}catch(e){}
+if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t);})();
+</script>
+<title>Resta con fichas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: a notebook page. Prompt strip on top, the place-value chart as the hero, the written (vertical) method beside it on wide screens, below it on phones. Light = graph paper, dark = chalkboard. */
+  --paper:#f2f5f1;
+  --grid:#dce5ea;
+  --card:#ffffff;
+  --ink:#1c2632;
+  --muted:#5b6672;
+  --pencil:#4b535d;
+  --ten:#2356c4;
+  --ten-ink:#ffffff;
+  --one:#f2a31b;
+  --one-ink:#3a2500;
+  --pen:#d6423a;
+  --ok:#1d8749;
+  --display:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --hand:"Patrick Hand","Comic Sans MS","Chalkboard SE",cursive;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#16221d; --grid:#1f2f29; --card:#1c2b25; --ink:#edf2ea; --muted:#a6b4ab; --pencil:#d5ddd4;
+    --ten:#6a95ff; --ten-ink:#0b1633; --one:#ffc24a; --one-ink:#3a2500; --pen:#ff7b70; --ok:#62d391;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#16221d; --grid:#1f2f29; --card:#1c2b25; --ink:#edf2ea; --muted:#a6b4ab; --pencil:#d5ddd4;
+  --ten:#6a95ff; --ten-ink:#0b1633; --one:#ffc24a; --one-ink:#3a2500; --pen:#ff7b70; --ok:#62d391;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{
+  background-color:var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:24px 24px;
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:17px;
+  line-height:1.45;
+  min-height:100%;
+}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--ten);outline-offset:2px}
+
+.wrap{max-width:980px;margin:0 auto;padding:16px 16px 40px;display:flex;flex-direction:column;gap:14px}
+
+/* Header */
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand h1{font-family:var(--display);font-weight:800;font-size:clamp(28px,7vw,42px);line-height:1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.home{flex:none;display:grid;place-items:center;width:48px;height:48px;border-radius:14px;border:2px solid var(--ink);background:var(--card);text-decoration:none;font-size:24px;line-height:1}
+.brand .mini{display:flex;gap:4px;align-items:center;flex:none}
+.brand .mini span{display:grid;place-items:center;border-radius:50%;font-family:var(--display);font-weight:800}
+.brand .mini .t{width:30px;height:30px;background:var(--ten);color:var(--ten-ink);font-size:13px}
+.brand .mini .o{width:20px;height:20px;background:var(--one);color:var(--one-ink);font-size:11px}
+.tools{display:flex;align-items:center;gap:10px}
+.lang{display:inline-flex;border:2px solid var(--ink);border-radius:999px;overflow:hidden;background:var(--card)}
+.lang button{border:0;background:transparent;padding:4px 12px;font-weight:700;font-size:15px}
+.lang button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.stars{display:inline-flex;align-items:center;gap:4px;font-family:var(--display);font-weight:800;font-size:20px;font-variant-numeric:tabular-nums}
+.stars svg{width:22px;height:22px;fill:var(--one)}
+.stars.pop svg{animation:pop .5s ease}
+.tagline{margin:0;color:var(--muted);max-width:62ch}
+
+/* Mode tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{border:2px solid var(--ink);background:var(--card);border-radius:12px;padding:6px 14px;font-weight:700}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper)}
+.modebar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-height:44px}
+.hwchip{border:2px dashed var(--muted);background:var(--card);border-radius:10px;padding:5px 12px;font-family:var(--hand);font-size:20px;display:inline-flex;gap:6px;align-items:center}
+.hwchip[aria-current="true"]{border-style:solid;border-color:var(--ten);box-shadow:0 0 0 2px var(--ten) inset}
+.hwchip .tick{color:var(--ok);font-family:var(--body);font-weight:700}
+.btn{border:2px solid var(--ink);background:var(--card);border-radius:12px;padding:8px 16px;font-weight:700}
+.btn.primary{background:var(--ten);border-color:var(--ten);color:var(--ten-ink)}
+.btn.go{background:var(--ok);border-color:var(--ok);color:var(--card)}
+.custom{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.custom label{display:flex;flex-direction:column;font-size:14px;color:var(--muted);gap:2px}
+.custom input{width:92px;font-family:var(--hand);font-size:26px;padding:2px 10px;border:2px solid var(--ink);border-radius:10px;background:var(--card);color:var(--ink)}
+.custom .minus{font-family:var(--hand);font-size:30px;padding-bottom:4px}
+.err{color:var(--pen);font-size:15px;width:100%;margin:0}
+
+/* Problem + prompt */
+.problem{font-family:var(--hand);font-size:clamp(40px,11vw,60px);line-height:1;display:flex;align-items:baseline;gap:.25em;flex-wrap:wrap}
+.problem .letter{font-size:.6em;color:var(--muted)}
+.problem .blank{display:inline-block;min-width:1.6em;border-bottom:3px solid var(--ink);text-align:center;color:var(--ok)}
+.prompt{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:2px solid var(--ink);border-left-width:10px;border-left-color:var(--ten);border-radius:14px;padding:12px 14px}
+.prompt[data-kind="warn"]{border-left-color:var(--one)}
+.prompt[data-kind="ok"]{border-left-color:var(--ok)}
+.prompt[data-kind="wrong"]{border-left-color:var(--pen)}
+.prompt p{margin:0;flex:1;font-size:clamp(17px,4.6vw,20px);font-weight:700;text-wrap:pretty}
+.prompt.shake{animation:shake .35s}
+.say{flex:none;border:2px solid var(--ink);background:transparent;border-radius:50%;width:40px;height:40px;display:grid;place-items:center}
+.say svg{width:20px;height:20px;fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.steps{display:flex;gap:6px;flex-wrap:wrap;list-style:none;margin:0;padding:0;counter-reset:s}
+.steps li{counter-increment:s;display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700;padding:3px 10px 3px 4px;border-radius:999px;border:2px solid var(--grid);background:var(--card);color:var(--muted)}
+.steps li::before{content:counter(s);display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--grid);color:var(--ink);font-size:13px}
+.steps li[data-s="current"]{border-color:var(--ten);color:var(--ink)}
+.steps li[data-s="current"]::before{background:var(--ten);color:var(--ten-ink)}
+.steps li[data-s="done"]{color:var(--ink)}
+.steps li[data-s="done"]::before{content:"✓";background:var(--ok);color:var(--card)}
+.steps li[data-s="skip"]{text-decoration:line-through;opacity:.6}
+
+/* Board */
+.board{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:760px){.board{grid-template-columns:1.55fr 1fr;align-items:start}}
+
+.chart{background:var(--card);border-radius:16px;padding:10px 6px 12px;box-shadow:0 1px 0 var(--grid),0 8px 24px -16px rgba(0,0,0,.35);
+  display:grid;grid-template-columns:minmax(48px,.45fr) 1.25fr 1.7fr;
+  --chipT:clamp(34px,10vw,48px); --chipO:clamp(21px,6.1vw,30px);}
+.col{display:flex;flex-direction:column;min-width:0;padding:0 6px}
+.col + .col{border-left:3px solid var(--ink)}
+.col .head{border-bottom:3px solid var(--ink);margin:0 -6px;padding:0 6px 4px;text-align:center}
+.col .head b{display:block;font-family:var(--hand);font-weight:400;font-size:24px;line-height:1.1}
+.col:first-child .head b{font-size:18px}
+.col:first-child .head small{font-size:10px}
+.col .head small{display:block;font-size:12px;color:var(--muted);line-height:1.2;overflow-wrap:anywhere}
+.col.active .head b{color:var(--ten)}
+.col.active.ones .head b{color:var(--one-ink)}
+:root[data-theme="dark"] .col.active.ones .head b{color:var(--one)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .col.active.ones .head b{color:var(--one)}}
+.col .body{flex:1;min-height:150px;padding:12px 0 8px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.col .tally{text-align:center;font-size:13px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;min-height:1.2em}
+
+.tensgrid{display:grid;grid-template-columns:repeat(3,var(--chipT));gap:6px}
+.onesgrid{display:grid;grid-template-columns:repeat(5,var(--chipO));gap:5px}
+.group{display:flex;flex-direction:column;align-items:center;gap:3px}
+.group .cap{font-size:11px;font-weight:700;color:var(--pen);text-align:center;line-height:1.2}
+
+.chip{position:relative;border:0;padding:0;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;line-height:1;transition:transform .15s,opacity .2s;touch-action:manipulation}
+.chip:active{transform:scale(.92)}
+.chip.ten{width:var(--chipT);height:var(--chipT);background:var(--ten);color:var(--ten-ink);font-size:calc(var(--chipT)*.38);box-shadow:inset 0 -3px 0 rgba(0,0,0,.22)}
+.chip.one{width:var(--chipO);height:var(--chipO);background:var(--one);color:var(--one-ink);font-size:calc(var(--chipO)*.48);box-shadow:inset 0 -2px 0 rgba(0,0,0,.18)}
+.chip .x{position:absolute;inset:-10%;width:120%;height:120%;pointer-events:none;overflow:visible}
+.chip .x path{fill:none;stroke:var(--pencil);stroke-width:4.5;stroke-linecap:round;stroke-dasharray:44;stroke-dashoffset:0}
+.chip.crossed{opacity:.55}
+.chip.crossed .x path{stroke:var(--ink)}
+.chip.broken{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 2px var(--muted);opacity:.8;cursor:default}
+.chip.broken .x path{stroke:var(--pen)}
+.chip.fresh .x path{animation:draw .28s ease-out both}
+.chip.fresh .x path + path{animation-delay:.14s}
+.chip.hint{animation:hint 1s ease-in-out 2}
+.chip.cheer{animation:bounce .6s ease both}
+
+@keyframes draw{from{stroke-dashoffset:44}to{stroke-dashoffset:0}}
+@keyframes hint{0%,100%{box-shadow:0 0 0 0 var(--one)}50%{box-shadow:0 0 0 6px var(--one)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-8px)}}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.5) rotate(15deg)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* Written method */
+.side{display:flex;flex-direction:column;gap:12px}
+.written{background:var(--card);border-radius:16px;padding:12px 16px 16px;box-shadow:0 1px 0 var(--grid),0 8px 24px -16px rgba(0,0,0,.35)}
+.written h2{margin:0 0 4px;font-family:var(--display);font-size:18px;font-weight:700;color:var(--muted)}
+.algo{display:grid;grid-template-columns:40px 64px 64px;justify-content:center;font-family:var(--hand);font-size:52px;line-height:1.05;text-align:center;font-variant-numeric:tabular-nums}
+.algo .mark{font-size:28px;color:var(--pen);height:34px;align-self:end}
+.algo .d{position:relative;border-radius:10px}
+.algo .d.hl{background:color-mix(in srgb,var(--one) 26%,transparent)}
+.algo .d.hlT{background:color-mix(in srgb,var(--ten) 18%,transparent)}
+.algo .struck::after{content:"";position:absolute;left:12%;right:12%;top:52%;border-top:4px solid var(--pen);transform:rotate(-28deg)}
+.algo .rule{grid-column:1/-1;border-top:4px solid var(--ink);margin:4px 0 8px}
+.slot{width:56px;height:62px;margin:0 auto;border:3px dashed var(--muted);border-radius:12px;background:transparent;font-family:var(--hand);font-size:48px;line-height:1;display:grid;place-items:center;padding:0}
+.slot[aria-pressed="true"]{border-style:solid;border-color:var(--ten);box-shadow:0 0 0 3px color-mix(in srgb,var(--ten) 30%,transparent)}
+.slot:disabled{opacity:.45;cursor:default}
+.slot.right{border-style:solid;border-color:var(--ok);color:var(--ok)}
+
+.keypad{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px}
+.keypad button{border:2px solid var(--ink);background:var(--paper);border-radius:10px;font-family:var(--hand);font-size:28px;padding:4px 0;min-height:46px}
+.keypad .wide{grid-column:span 2;font-family:var(--body);font-size:16px;font-weight:700}
+.keypad .check{grid-column:span 3;background:var(--ten);border-color:var(--ten);color:var(--ten-ink);font-family:var(--body);font-size:17px;font-weight:700}
+
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.foot{font-size:13px;color:var(--muted);margin:0}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <a class="home" href="/teo-hub/" id="home" aria-label="Inicio">🏠</a>
+      <div class="mini" aria-hidden="true"><span class="t">10</span><span class="o">1</span></div>
+      <h1 id="title">Resta con fichas</h1>
+    </div>
+    <div class="tools">
+      <span class="stars" id="stars" aria-live="polite"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17l-5.9 3.3 1.3-6.5L2.5 9.3l6.6-.8z"/></svg><span id="starN">0</span></span>
+      <div class="lang" role="group" aria-label="Idioma / Language">
+        <button id="lang-es" type="button" aria-pressed="true">ES</button>
+        <button id="lang-en" type="button" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+  <p class="tagline" id="tagline"></p>
+
+  <div class="tabs" role="tablist">
+    <button id="tab-hw" role="tab" type="button"></button>
+    <button id="tab-practice" role="tab" type="button"></button>
+    <button id="tab-custom" role="tab" type="button"></button>
+  </div>
+
+  <div class="modebar" id="bar-hw"></div>
+  <div class="modebar" id="bar-practice"><button class="btn" id="newProb" type="button"></button></div>
+  <form class="modebar custom" id="bar-custom" novalidate>
+    <label for="cA"><span id="lblA"></span><input id="cA" inputmode="numeric" maxlength="2" autocomplete="off"></label>
+    <span class="minus" aria-hidden="true">−</span>
+    <label for="cB"><span id="lblB"></span><input id="cB" inputmode="numeric" maxlength="2" autocomplete="off"></label>
+    <button class="btn primary" id="cGo" type="submit"></button>
+    <p class="err" id="cErr" hidden></p>
+  </form>
+
+  <div class="problem" id="problem"></div>
+
+  <div class="prompt" id="prompt" aria-live="polite">
+    <p id="promptText"></p>
+  </div>
+
+  <ol class="steps" id="steps"></ol>
+
+  <div class="board">
+    <div class="chart" id="chart"></div>
+    <div class="side">
+      <div class="written">
+        <h2 id="writtenTitle"></h2>
+        <div class="algo" id="algo"></div>
+        <div class="keypad" id="keypad" hidden></div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="restart" type="button"></button>
+        <button class="btn go" id="next" type="button" hidden></button>
+      </div>
+    </div>
+  </div>
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- Strings ---------- */
+const STR = {
+  es:{
+    title:"Resta con fichas",
+    tagline:"Resuelve con la tabla de valor posicional. Cambia 1 decena por 10 unidades cuando sea necesario.",
+    tabs:["Tarea","Práctica","Tu problema"],
+    cols:[["100's","centenas"],["10's","decenas"],["1's","unidades"]],
+    U:n=>n===1?"unidad":"unidades",
+    D:n=>n===1?"decena":"decenas",
+    steps:["Cambia si hace falta","Quita unidades","Quita decenas","Escribe"],
+    needBreak:(o,b)=>`Hay ${o} ${STR.es.U(o)} y hay que quitar ${b}. ¡No alcanzan! Toca una decena para cambiarla por 10 unidades.`,
+    enough:(o,b)=>`Hay ${o} ${STR.es.U(o)} y hay que quitar ${b}. ¡Sí alcanzan! No hace falta cambiar. Toca ${b} ${STR.es.U(b)} para tacharlas.`,
+    broke:(o,b)=>`¡Cambiaste 1 decena por 10 unidades! Ahora hay ${o} unidades. Tacha ${b}.`,
+    crossOnes:(n,b)=>`Tacha ${b} ${STR.es.U(b)}: llevas ${n} de ${b}.`,
+    tens0:(b,skipOnes)=>skipOnes?`No hay unidades que quitar. Tacha ${b} ${STR.es.D(b)}.`:`¡Unidades listas! Ahora tacha ${b} ${STR.es.D(b)}.`,
+    tensN:(n,b)=>`Tacha ${b} ${STR.es.D(b)}: llevas ${n} de ${b}.`,
+    answer:"¿Cuánto queda? Cuenta las fichas sin tachar y escribe la respuesta en la resta vertical.",
+    needOnes:"Escribe el número de las unidades.",
+    wrong1:"Casi. Cuenta otra vez las fichas que no están tachadas.",
+    wrong2:(t,o)=>`Quedan ${t} ${STR.es.D(t)} y ${o} ${STR.es.U(o)} sin tachar. ¿Qué número forman?`,
+    correct:(a,b,r)=>`¡Correcto! ${a} − ${b} = ${r}`,
+    notNeeded:"¡Ya hay suficientes unidades! No hace falta cambiar una decena.",
+    alreadyBroke:"Ya cambiaste una decena. Ahora tacha unidades.",
+    breakFirst:"No alcanzan las unidades. Primero toca una decena para cambiarla.",
+    onesDone:"Las unidades ya están listas. Ahora tacha decenas.",
+    tensMax:b=>`Ya tachaste ${b} ${STR.es.D(b)}.`,
+    onesMax:b=>`Ya tachaste ${b} ${STR.es.U(b)}.`,
+    chipsDone:"Ya terminaste con las fichas. Escribe la respuesta.",
+    solved:"Este ya está resuelto. Toca Siguiente.",
+    check:"Comprobar", next:"Siguiente", newProb:"Otro problema", restart:"Empezar de nuevo", erase:"Borrar",
+    listen:"Escuchar", home:"Volver al inicio",
+    hwDone:"¡Terminaste la tarea! Puedes repetirla o ir a Práctica.",
+    lblA:"Número de arriba", lblB:"Número que quitas", go:"Empezar",
+    customErr:"Arriba usa un número del 10 al 99. Abajo, uno que no sea más grande.",
+    written:"Resta vertical",
+    fromTen:"de 1 decena",
+    tally:(n,k)=>`${n} ${k==="t"?STR.es.D(n):STR.es.U(n)}`,
+    tenLabel:(x,br)=>br?"decena cambiada":x?"decena tachada":"decena",
+    oneLabel:x=>x?"unidad tachada":"unidad",
+    slotT:"Decenas de la respuesta", slotO:"Unidades de la respuesta",
+    foot:"Basado en Eureka Math, 2.º grado, Módulo 4, Lección 13.",
+    minus:"menos", speechLang:"es-MX", starsLabel:"estrellas"
+  },
+  en:{
+    title:"Subtract with Chips",
+    tagline:"Solve with the place value chart. Change 1 ten for 10 ones when you need to.",
+    tabs:["Homework","Practice","Your problem"],
+    cols:[["100's","hundreds"],["10's","tens"],["1's","ones"]],
+    U:n=>n===1?"one":"ones",
+    D:n=>n===1?"ten":"tens",
+    steps:["Change if needed","Take away ones","Take away tens","Write it"],
+    needBreak:(o,b)=>`There ${o===1?"is":"are"} ${o} ${STR.en.U(o)} and you need to take away ${b}. Not enough! Tap a ten to change it for 10 ones.`,
+    enough:(o,b)=>`There ${o===1?"is":"are"} ${o} ${STR.en.U(o)} and you need to take away ${b}. That's enough, so no change needed. Tap ${b} ${STR.en.U(b)} to cross them out.`,
+    broke:(o,b)=>`You changed 1 ten for 10 ones! Now there are ${o} ones. Cross out ${b}.`,
+    crossOnes:(n,b)=>`Cross out ${b} ${STR.en.U(b)}: ${n} of ${b} done.`,
+    tens0:(b,skipOnes)=>skipOnes?`No ones to take away. Cross out ${b} ${STR.en.D(b)}.`:`Ones are done! Now cross out ${b} ${STR.en.D(b)}.`,
+    tensN:(n,b)=>`Cross out ${b} ${STR.en.D(b)}: ${n} of ${b} done.`,
+    answer:"How much is left? Count the chips that aren't crossed out and write the answer in the vertical subtraction.",
+    needOnes:"Write the ones digit.",
+    wrong1:"Almost. Count the chips that aren't crossed out again.",
+    wrong2:(t,o)=>`There are ${t} ${STR.en.D(t)} and ${o} ${STR.en.U(o)} left. What number is that?`,
+    correct:(a,b,r)=>`Correct! ${a} − ${b} = ${r}`,
+    notNeeded:"You already have enough ones! No need to change a ten.",
+    alreadyBroke:"You already changed a ten. Now cross out ones.",
+    breakFirst:"Not enough ones. First tap a ten to change it.",
+    onesDone:"The ones are done. Now cross out tens.",
+    tensMax:b=>`You already crossed out ${b} ${STR.en.D(b)}.`,
+    onesMax:b=>`You already crossed out ${b} ${STR.en.U(b)}.`,
+    chipsDone:"You're done with the chips. Write the answer.",
+    solved:"This one is solved. Tap Next.",
+    check:"Check", next:"Next", newProb:"New problem", restart:"Start over", erase:"Erase",
+    listen:"Listen", home:"Back to the hub",
+    hwDone:"You finished the homework! Do it again or go to Practice.",
+    lblA:"Top number", lblB:"Number to take away", go:"Start",
+    customErr:"Use 10 to 99 on top, and a number on the bottom that isn't bigger.",
+    written:"Vertical subtraction",
+    fromTen:"from 1 ten",
+    tally:(n,k)=>`${n} ${k==="t"?STR.en.D(n):STR.en.U(n)}`,
+    tenLabel:(x,br)=>br?"changed ten":x?"crossed-out ten":"ten",
+    oneLabel:x=>x?"crossed-out one":"one",
+    slotT:"Tens digit of the answer", slotO:"Ones digit of the answer",
+    foot:"Based on Eureka Math Grade 2, Module 4, Lesson 13.",
+    minus:"minus", speechLang:"en-US", starsLabel:"stars"
+  }
+};
+
+const HW = [{a:42,b:26,l:"a"},{a:54,b:28,l:"b"},{a:60,b:17,l:"c"}];
+const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = id => document.getElementById(id);
+
+/* ---------- State ---------- */
+let S = {
+  lang:"es", mode:"hw", hw:0, hwSolved:[false,false,false], stars:0,
+  p:{a:42,b:26}, tens:[], ones:[], phase:"ones", broken:false,
+  ans:{t:"",o:""}, sel:"o", tries:0, note:null
+};
+let fx = {crossed:null, arrive:false, flyFrom:null, hintTens:false, cheer:false, shake:false, star:false};
+
+const L = () => STR[S.lang];
+const parts = () => {
+  const {a,b} = S.p;
+  return {aT:Math.floor(a/10), aO:a%10, bT:Math.floor(b/10), bO:b%10};
+};
+const needBreak = () => { const q=parts(); return q.aO < q.bO; };
+const crossedOnes = () => S.ones.filter(o=>o.x).length;
+const crossedTens = () => S.tens.filter(t=>t.x).length;
+const leftTens = () => S.tens.filter(t=>!t.x && !t.br).length;
+const leftOnes = () => S.ones.filter(o=>!o.x).length;
+
+function save(){
+  try{ localStorage.setItem("rf_state", JSON.stringify({lang:S.lang, stars:S.stars, hwSolved:S.hwSolved})); }catch(e){}
+}
+function load(){
+  try{
+    const d = JSON.parse(localStorage.getItem("rf_state")||"null");
+    if(d){ if(d.lang==="en"||d.lang==="es") S.lang=d.lang; if(Number.isFinite(d.stars)) S.stars=d.stars; if(Array.isArray(d.hwSolved)) S.hwSolved=d.hwSolved.slice(0,3); }
+  }catch(e){}
+}
+
+function startProblem(a,b){
+  S.p = {a,b};
+  const q = parts();
+  S.tens = Array.from({length:q.aT},(_,i)=>({id:"t"+i,x:false,br:false}));
+  S.ones = Array.from({length:q.aO},(_,i)=>({id:"o"+i,x:false,g:0}));
+  S.broken = false;
+  S.phase = q.bO>0 ? "ones" : (q.bT>0 ? "tens" : "answer");
+  S.ans = {t:"",o:""}; S.sel="o"; S.tries=0; S.note=null;
+}
+
+function randomProblem(){
+  const r = Math.random(), rnd=(lo,hi)=>lo+Math.floor(Math.random()*(hi-lo+1));
+  let aT,aO,bT,bO;
+  if(r<0.65){ aT=rnd(2,9); bT=rnd(1,aT-1); aO=rnd(0,8); bO=rnd(aO+1,9); }
+  else if(r<0.88){ aT=rnd(2,9); bT=rnd(1,aT-1); aO=rnd(1,9); bO=rnd(0,aO); }
+  else { aT=rnd(3,9); bT=rnd(1,aT-1); aO=0; bO=rnd(1,9); }
+  const a=aT*10+aO, b=bT*10+bO;
+  if(S.p && S.p.a===a && S.p.b===b) return randomProblem();
+  return {a,b};
+}
+
+function setNote(key, kind, ...args){ S.note = {key, kind, args}; }
+
+/* Hub convention: progress summary for the hub tile */
+function dayKey(d){ return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); }
+function hubSummary(){
+  try{
+    const now=new Date(), today=dayKey(now), y=new Date(now); y.setDate(y.getDate()-1);
+    const st = JSON.parse(localStorage.getItem("rf_streak")||"null") || {day:"",n:0};
+    if(st.day!==today){ st.n = st.day===dayKey(y) ? st.n+1 : 1; st.day=today; }
+    localStorage.setItem("rf_streak", JSON.stringify(st));
+    const hw = S.hwSolved.filter(Boolean).length;
+    const status = S.lang==="es" ? `Tarea ${hw} de 3 · ${S.stars} estrellas` : `Homework ${hw} of 3 · ${S.stars} stars`;
+    localStorage.setItem("hub:app:resta-fichas", JSON.stringify({lastPlayed:now.toISOString(), streak:st.n, xp:S.stars, status}));
+  }catch(e){}
+}
+
+/* ---------- Actions ---------- */
+function tapTen(id){
+  const t = S.tens.find(x=>x.id===id); if(!t) return;
+  const q = parts();
+  if(S.phase==="done"){ setNote("solved","ok"); fx.shake=true; return render(); }
+  if(S.phase==="ones"){
+    if(!needBreak()){ setNote("notNeeded","warn"); fx.shake=true; }
+    else if(S.broken){ setNote("alreadyBroke","warn"); fx.shake=true; }
+    else if(!t.x && !t.br){
+      t.br = true; S.broken = true; S.note = null;
+      for(let i=0;i<10;i++) S.ones.push({id:"n"+i, x:false, g:1});
+      fx.crossed = id; fx.arrive = true; fx.flyFrom = id;
+    }
+    return render();
+  }
+  if(S.phase==="tens"){
+    if(t.br) return;
+    if(t.x){ t.x=false; S.note=null; }
+    else if(crossedTens() >= q.bT){ setNote("tensMax","warn",q.bT); fx.shake=true; }
+    else { t.x=true; S.note=null; fx.crossed=id; }
+    if(crossedTens()===q.bT) S.phase="answer";
+    return render();
+  }
+  setNote("chipsDone","warn"); fx.shake=true; render();
+}
+
+function tapOne(id){
+  const o = S.ones.find(x=>x.id===id); if(!o) return;
+  const q = parts();
+  if(S.phase==="done"){ setNote("solved","ok"); fx.shake=true; return render(); }
+  if(S.phase==="ones"){
+    if(needBreak() && !S.broken){ setNote("breakFirst","warn"); fx.hintTens=true; fx.shake=true; return render(); }
+    if(o.x){ o.x=false; S.note=null; }
+    else if(crossedOnes() >= q.bO){ setNote("onesMax","warn",q.bO); fx.shake=true; }
+    else { o.x=true; S.note=null; fx.crossed=id; }
+    if(crossedOnes()===q.bO) S.phase = q.bT>0 ? "tens" : "answer";
+    return render();
+  }
+  if(S.phase==="tens"){ setNote("onesDone","warn"); fx.shake=true; return render(); }
+  setNote("chipsDone","warn"); fx.shake=true; render();
+}
+
+function typeDigit(d){
+  if(S.phase!=="answer") return;
+  S.ans[S.sel] = String(d);
+  if(S.sel==="o") S.sel="t";
+  S.note=null; render();
+}
+function erase(){
+  if(S.phase!=="answer") return;
+  if(S.ans[S.sel]==="" && S.sel==="t"){ S.sel="o"; }
+  S.ans[S.sel]=""; render();
+}
+function check(){
+  if(S.phase!=="answer") return;
+  if(S.ans.o===""){ setNote("needOnes","warn"); S.sel="o"; fx.shake=true; return render(); }
+  const val = (parseInt(S.ans.t||"0",10))*10 + parseInt(S.ans.o,10);
+  const r = S.p.a - S.p.b;
+  if(val===r){
+    S.phase="done"; S.stars++; fx.star=true; fx.cheer=true; hubSummary();
+    setNote("correct","ok",S.p.a,S.p.b,r);
+    if(S.mode==="hw"){ S.hwSolved[S.hw]=true; }
+    save();
+  } else {
+    S.tries++;
+    if(S.tries<2) setNote("wrong1","wrong");
+    else setNote("wrong2","wrong",leftTens(),leftOnes());
+    fx.shake=true;
+  }
+  render();
+}
+function next(){
+  if(S.mode==="hw"){
+    if(S.hw<HW.length-1){ S.hw++; startProblem(HW[S.hw].a,HW[S.hw].b); }
+    else { S.hw=0; startProblem(HW[0].a,HW[0].b); setNote("hwDone","ok"); }
+  } else if(S.mode==="practice"){
+    const p=randomProblem(); startProblem(p.a,p.b);
+  } else {
+    const p=randomProblem(); startProblem(p.a,p.b);
+    S.mode="practice";
+  }
+  render();
+}
+
+/* ---------- Prompt ---------- */
+function promptInfo(){
+  const s = L();
+  if(S.note){ const v=s[S.note.key]; return {text: typeof v==="function"? v(...S.note.args) : v, kind:S.note.kind}; }
+  const q = parts();
+  if(S.phase==="ones"){
+    const n = crossedOnes();
+    if(needBreak() && !S.broken) return {text:s.needBreak(q.aO,q.bO), kind:"info"};
+    if(n===0) return {text: S.broken ? s.broke(S.ones.length,q.bO) : s.enough(q.aO,q.bO), kind:"info"};
+    return {text:s.crossOnes(n,q.bO), kind:"info"};
+  }
+  if(S.phase==="tens"){
+    const n = crossedTens();
+    return {text: n===0 ? s.tens0(q.bT, q.bO===0) : s.tensN(n,q.bT), kind:"info"};
+  }
+  if(S.phase==="answer") return {text:s.answer, kind:"info"};
+  return {text:s.correct(S.p.a,S.p.b,S.p.a-S.p.b), kind:"ok"};
+}
+
+/* ---------- Render ---------- */
+const XSVG = '<svg class="x" viewBox="0 0 40 40" aria-hidden="true"><path d="M9 9 L31 31"/><path d="M31 9 L9 31"/></svg>';
+
+function chipTen(t){
+  const cls = ["chip","ten"];
+  if(t.br) cls.push("broken"); else if(t.x) cls.push("crossed");
+  if(fx.crossed===t.id) cls.push("fresh");
+  if(fx.hintTens && !t.br && !t.x) cls.push("hint");
+  if(fx.cheer && !t.br && !t.x) cls.push("cheer");
+  return `<button type="button" class="${cls.join(" ")}" data-id="${t.id}" aria-label="${L().tenLabel(t.x,t.br)}">10${(t.x||t.br)?XSVG:""}</button>`;
+}
+function chipOne(o,i){
+  const cls = ["chip","one"];
+  if(o.x) cls.push("crossed");
+  if(fx.crossed===o.id) cls.push("fresh");
+  if(fx.arrive && o.g===1) cls.push("arrive");
+  if(fx.cheer && !o.x) cls.push("cheer");
+  const style = fx.cheer && !o.x ? ` style="animation-delay:${i*30}ms"` : "";
+  return `<button type="button" class="${cls.join(" ")}" data-id="${o.id}" aria-label="${L().oneLabel(o.x)}"${style}>1${o.x?XSVG:""}</button>`;
+}
+
+function renderChart(){
+  const s=L();
+  const active = S.phase==="ones" ? "o" : S.phase==="tens" ? "t" : "";
+  const g0 = S.ones.filter(o=>o.g===0), g1 = S.ones.filter(o=>o.g===1);
+  const ones0 = g0.map((o,i)=>chipOne(o,i)).join("");
+  const ones1 = g1.map((o,i)=>chipOne(o,i+g0.length)).join("");
+  const head = (c)=>`<div class="head"><b>${s.cols[c][0]}</b><small>${s.cols[c][1]}</small></div>`;
+  $("chart").innerHTML =
+    `<div class="col">${head(0)}<div class="body"></div><div class="tally">0</div></div>`+
+    `<div class="col tens${active==="t"?" active":""}">${head(1)}<div class="body"><div class="tensgrid">${S.tens.map(chipTen).join("")}</div></div><div class="tally">${s.tally(leftTens(),"t")}</div></div>`+
+    `<div class="col ones${active==="o"?" active":""}">${head(2)}<div class="body">`+
+      (g0.length?`<div class="group"><div class="onesgrid">${ones0}</div></div>`:"")+
+      (g1.length?`<div class="group"><span class="cap">${s.fromTen}</span><div class="onesgrid">${ones1}</div></div>`:"")+
+    `</div><div class="tally">${s.tally(leftOnes(),"o")}</div></div>`;
+}
+
+function renderAlgo(){
+  const s=L(), q=parts(), done=S.phase==="done", ans=S.phase==="answer";
+  const hlCol = S.phase==="ones" ? "o" : S.phase==="tens" ? "t" : (ans ? S.sel : "");
+  const hl = c => hlCol===c ? (c==="o"?" hl":" hlT") : "";
+  const r = S.p.a - S.p.b, rT = Math.floor(r/10), rO = r%10;
+  const slot = (c)=>{
+    const v = done ? (c==="t" ? (rT?String(rT):"") : String(rO)) : S.ans[c];
+    const pressed = ans && S.sel===c;
+    return `<button type="button" class="slot${done?" right":""}" data-slot="${c}" aria-pressed="${pressed}" aria-label="${c==="t"?s.slotT:s.slotO}" ${(ans)?"":"disabled"}>${v}</button>`;
+  };
+  $("algo").innerHTML =
+    `<span class="mark"></span><span class="mark">${S.broken?q.aT-1:""}</span><span class="mark">${S.broken?q.aO+10:""}</span>`+
+    `<span></span><span class="d${S.broken?" struck":""}${hl("t")}">${q.aT}</span><span class="d${S.broken?" struck":""}${hl("o")}">${q.aO}</span>`+
+    `<span>−</span><span class="d${hl("t")}">${q.bT||""}</span><span class="d${hl("o")}">${q.bO}</span>`+
+    `<span class="rule"></span>`+
+    `<span></span><span>${slot("t")}</span><span>${slot("o")}</span>`;
+  const kp = $("keypad");
+  kp.hidden = !ans;
+  if(ans && !kp.dataset.lang || kp.dataset.lang!==S.lang){
+    kp.dataset.lang = S.lang;
+    kp.innerHTML = [1,2,3,4,5,6,7,8,9,0].map(d=>`<button type="button" data-digit="${d}">${d}</button>`).join("")+
+      `<button type="button" class="wide" data-erase="1">${s.erase}</button><button type="button" class="check" data-check="1">${s.check}</button>`;
+  }
+}
+
+function renderSteps(){
+  const s=L(), q=parts();
+  const order = {ones:0,tens:1,answer:2,done:3}[S.phase];
+  const st = [];
+  // 1 change
+  if(!needBreak()) st.push("skip");
+  else st.push(S.broken ? "done" : "current");
+  // 2 ones
+  if(q.bO===0) st.push("skip");
+  else if(order>0) st.push("done");
+  else st.push((needBreak() && !S.broken) ? "todo" : "current");
+  // 3 tens
+  if(q.bT===0) st.push("skip");
+  else st.push(order>1 ? "done" : order===1 ? "current" : "todo");
+  // 4 write
+  st.push(order===3 ? "done" : order===2 ? "current" : "todo");
+  $("steps").innerHTML = s.steps.map((t,i)=>`<li data-s="${st[i]}">${t}</li>`).join("");
+}
+
+function renderProblem(){
+  const lt = S.mode==="hw" ? `<span class="letter">${HW[S.hw].l}.</span>` : "";
+  const done = S.phase==="done";
+  $("problem").innerHTML = `${lt}<span>${S.p.a} − ${S.p.b} =</span><span class="blank">${done ? S.p.a-S.p.b : ""}</span>`;
+}
+
+function renderStatic(){
+  const s=L();
+  document.documentElement.lang = S.lang;
+  $("title").textContent = s.title;
+  $("tagline").textContent = s.tagline;
+  $("lang-es").setAttribute("aria-pressed", S.lang==="es");
+  $("lang-en").setAttribute("aria-pressed", S.lang==="en");
+  ["hw","practice","custom"].forEach((m,i)=>{
+    const b=$("tab-"+m); b.textContent=s.tabs[i]; b.setAttribute("aria-selected", S.mode===m);
+    $("bar-"+m).hidden = S.mode!==m;
+  });
+  $("bar-hw").innerHTML = HW.map((h,i)=>`<button type="button" class="hwchip" data-hw="${i}" aria-current="${S.hw===i && S.mode==="hw"}">${h.l}. ${h.a} − ${h.b}${S.hwSolved[i]?'<span class="tick">✓</span>':""}</button>`).join("");
+  $("newProb").textContent = s.newProb;
+  $("lblA").textContent = s.lblA; $("lblB").textContent = s.lblB; $("cGo").textContent = s.go;
+  $("home").setAttribute("aria-label", s.home);
+  $("writtenTitle").textContent = s.written;
+  $("restart").textContent = s.restart;
+  $("next").textContent = s.next;
+  $("next").hidden = S.phase!=="done";
+  $("starN").textContent = S.stars;
+  $("stars").setAttribute("aria-label", `${S.stars} ${s.starsLabel}`);
+  $("foot").textContent = s.foot;
+  if(!$("cErr").hidden) $("cErr").textContent = s.customErr;
+}
+
+function render(){
+  renderStatic();
+  renderProblem();
+  const pi = promptInfo();
+  $("promptText").textContent = pi.text;
+  $("prompt").dataset.kind = pi.kind;
+  renderSteps();
+  renderChart();
+  renderAlgo();
+  runFx();
+}
+
+function runFx(){
+  const pr = $("prompt");
+  if(fx.shake && !reduceMotion){ pr.classList.remove("shake"); void pr.offsetWidth; pr.classList.add("shake"); }
+  if(fx.star){ const st=$("stars"); st.classList.remove("pop"); void st.offsetWidth; st.classList.add("pop"); }
+  if(fx.flyFrom && !reduceMotion){
+    const from = document.querySelector(`.chip[data-id="${fx.flyFrom}"]`);
+    if(from){
+      const fr = from.getBoundingClientRect();
+      const cx = fr.left+fr.width/2, cy = fr.top+fr.height/2;
+      const els = Array.from(document.querySelectorAll(".chip.one.arrive"));
+      els.forEach(el=>{
+        const r = el.getBoundingClientRect();
+        el.style.transition="none";
+        el.style.transform=`translate(${cx-(r.left+r.width/2)}px,${cy-(r.top+r.height/2)}px) scale(.35)`;
+        el.style.opacity="0";
+      });
+      void document.body.offsetWidth;
+      els.forEach((el,i)=>{
+        el.style.transition=`transform .6s cubic-bezier(.2,.9,.25,1.15) ${i*55}ms, opacity .15s ${i*55}ms`;
+        el.style.transform=""; el.style.opacity="";
+      });
+      setTimeout(()=>els.forEach(el=>{el.style.transition="";}), 1400);
+    }
+  }
+  fx = {crossed:null, arrive:false, flyFrom:null, hintTens:false, cheer:false, shake:false, star:false};
+}
+
+
+/* ---------- Events ---------- */
+function bind(){
+  $("chart").addEventListener("click", e=>{
+    const c = e.target.closest(".chip"); if(!c) return;
+    if(c.classList.contains("ten")) tapTen(c.dataset.id); else tapOne(c.dataset.id);
+  });
+  $("algo").addEventListener("click", e=>{
+    const b = e.target.closest("[data-slot]"); if(!b || S.phase!=="answer") return;
+    S.sel = b.dataset.slot; render();
+  });
+  $("keypad").addEventListener("click", e=>{
+    const b = e.target.closest("button"); if(!b) return;
+    if(b.dataset.digit!==undefined) typeDigit(b.dataset.digit);
+    else if(b.dataset.erase) erase();
+    else if(b.dataset.check) check();
+  });
+  document.addEventListener("keydown", e=>{
+    if(S.phase!=="answer" || e.target.tagName==="INPUT") return;
+    if(/^[0-9]$/.test(e.key)){ typeDigit(e.key); e.preventDefault(); }
+    else if(e.key==="Backspace"){ erase(); e.preventDefault(); }
+    else if(e.key==="Enter"){ check(); e.preventDefault(); }
+    else if(e.key==="ArrowLeft"){ S.sel="t"; render(); }
+    else if(e.key==="ArrowRight"){ S.sel="o"; render(); }
+  });
+  $("lang-es").addEventListener("click", ()=>{ S.lang="es"; save(); render(); });
+  $("lang-en").addEventListener("click", ()=>{ S.lang="en"; save(); render(); });
+  $("tab-hw").addEventListener("click", ()=>{ S.mode="hw"; startProblem(HW[S.hw].a,HW[S.hw].b); render(); });
+  $("tab-practice").addEventListener("click", ()=>{ S.mode="practice"; const p=randomProblem(); startProblem(p.a,p.b); render(); });
+  $("tab-custom").addEventListener("click", ()=>{ S.mode="custom"; render(); try{$("cA").focus();}catch(e){} });
+  $("bar-hw").addEventListener("click", e=>{
+    const b = e.target.closest("[data-hw]"); if(!b) return;
+    S.hw = +b.dataset.hw; startProblem(HW[S.hw].a,HW[S.hw].b); render();
+  });
+  $("newProb").addEventListener("click", ()=>{ const p=randomProblem(); startProblem(p.a,p.b); render(); });
+  $("bar-custom").addEventListener("submit", e=>{
+    e.preventDefault();
+    const a = parseInt($("cA").value,10), b = parseInt($("cB").value,10);
+    const ok = Number.isInteger(a) && Number.isInteger(b) && a>=10 && a<=99 && b>=0 && b<=a;
+    $("cErr").hidden = ok;
+    if(!ok){ $("cErr").textContent = L().customErr; return; }
+    startProblem(a,b); render();
+  });
+  $("restart").addEventListener("click", ()=>{ startProblem(S.p.a,S.p.b); render(); });
+  $("next").addEventListener("click", next);
+}
+
+/* ---------- Boot ---------- */
+function start(data){
+  load();
+  if(data && data.S && data.S.p){ S = Object.assign(S, data.S); }
+  else { startProblem(HW[0].a, HW[0].b); }
+  bind();
+  render();
+}
+try{ window.claude?.hot?.snapshot?.(()=>({S:JSON.parse(JSON.stringify(S))})); }catch(e){}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
